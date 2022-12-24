@@ -58,7 +58,6 @@ sales = sqlalchemy.Table(
     sqlalchemy.Column("store_id", sqlalchemy.ForeignKey('store.id')),
 )
 
-
 engine = sqlalchemy.create_engine(
     DATABASE_URL, connect_args={"check_same_thread": False}
     # Уберите параметр check_same_thread когда база не sqlite
@@ -98,13 +97,13 @@ class Item(BaseModel):
     price: float
 
 
-class SaleIn(BaseModel):
+class SalesIn(BaseModel):
     sale_time: datetime.datetime
     item_id: int
     store_id: int
 
 
-class Sale(BaseModel):
+class Sales(BaseModel):
     id: int
     sale_time: datetime.datetime
     item_id: int
@@ -118,8 +117,8 @@ class StoreTop(BaseModel):
 
 
 class ItemTop(BaseModel):
-    id: int
-    name: str
+    ItemID: int
+    Name: str
     item_count: int
 
 
@@ -134,6 +133,7 @@ async def startup():
 @app.on_event("shutdown")
 async def shutdown():
     await database.disconnect()
+
 
 """
 @app.get("/notes/", response_model=List[Note])
@@ -164,15 +164,15 @@ async def top_stores():
         select 
             store.id as id_store,
             store.address as address_store, 
-            sum(item.price) as sum_item_price,
-        from sale
+            sum(item.price) as sum_item_price
+        from sales
             join
                 store
-                on store.id=sale.store_id 
+                on sales.store_id=store.id 
             join
                 item	
-                on item.id=sale.item_id
-        where sale.sale_time>=now(), interval 1 month
+                on sales.item_id=item.id
+        where sales.sale_time>=now(), interval 31 day
         group by id_store, address_store
         order by sum_item_price desc limit 10
         """
@@ -183,13 +183,16 @@ async def top_stores():
 @app.get("/items/top/", response_model=List[ItemTop])
 async def top_items():
     query = f"""
-        SELECT
-            COUNT(1) AS item_count,
-            (SELECT id, name FROM item
-                WHERE item.id=sale.item_id)
-            FROM sale
-        GROUP BY item.id, item.name
-        ORDER BY item_count DESC LIMIT 10
+    select
+        count(1) as item_count,
+        item.id as ItemID,
+        item.name as Name
+    from sales
+        join
+            item
+            on item.id=sales.item_id
+    group by itemID, Name
+    order by item_count DESC limit 10
         """
     return await database.fetch_all(query)
 
@@ -220,11 +223,10 @@ async def create_item(note: ItemIn):
 
 
 # Добавление в таблицу продаж
-@app.post("/sale/", response_model=Sale)
-async def create_sale(note: SaleIn):
-    query = store.insert().values(sale_time=note.sale_time, item_id=note.item_id, store_id=note.store_id)
+@app.post("/sales/", response_model=Sales)
+async def create_sale(note: SalesIn):
+    query = sales.insert().values(sale_time=datetime.datetime.now(), item_id=note.item_id, store_id=note.store_id)
     last_record_id = await database.execute(query)
     return {**note.dict(), "id": last_record_id}
-
 
 # запуск: uvicorn <filename>:application
