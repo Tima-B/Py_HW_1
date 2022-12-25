@@ -1,0 +1,6 @@
+Сторонние библиотеки (нужны для работы программы):
+databases
+sqlalchemy
+datetime
+fastapi
+pydantic

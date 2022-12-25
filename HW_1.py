@@ -136,6 +136,7 @@ async def read_item():
     query = item.select()
     return await database.fetch_all(query)
 
+
 # Запрос списка продаж
 @app.get("/sales/")
 async def read_sales():
