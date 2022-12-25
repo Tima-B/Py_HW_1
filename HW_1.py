@@ -64,18 +64,6 @@ engine = sqlalchemy.create_engine(
 )
 metadata.create_all(engine)
 
-"""
-class NoteIn(BaseModel):
-    text: str
-    completed: bool
-
-
-class Note(BaseModel):
-    id: int
-    text: str
-    completed: bool
-"""
-
 
 class StoreIn(BaseModel):
     address: str
@@ -98,7 +86,7 @@ class Item(BaseModel):
 
 
 class SalesIn(BaseModel):
-    sale_time: datetime.datetime
+    sale_time = datetime.datetime.now()
     item_id: int
     store_id: int
 
@@ -135,14 +123,6 @@ async def shutdown():
     await database.disconnect()
 
 
-"""
-@app.get("/notes/", response_model=List[Note])
-async def read_notes():
-    query = notes.select()
-    return await database.fetch_all(query)
-"""
-
-
 # Запрос списка магазинов
 @app.get("/store/")
 async def read_store():
@@ -151,9 +131,15 @@ async def read_store():
 
 
 # Запрос списка товаров
-@app.get('/item/')
+@app.get("/item/")
 async def read_item():
     query = item.select()
+    return await database.fetch_all(query)
+
+# Запрос списка продаж
+@app.get("/sales/")
+async def read_sales():
+    query = sales.select()
     return await database.fetch_all(query)
 
 
@@ -168,11 +154,11 @@ async def top_stores():
         from sales
             join
                 store
-                on sales.store_id=store.id 
+                on store.id=sales.store_id
             join
                 item	
-                on sales.item_id=item.id
-        where sales.sale_time>=now(), interval 31 day
+                on item.id=sales.item_id     
+        where sales.sale_time>=date('now','-1 month')
         group by id_store, address_store
         order by sum_item_price desc limit 10
         """
@@ -183,27 +169,18 @@ async def top_stores():
 @app.get("/items/top/", response_model=List[ItemTop])
 async def top_items():
     query = f"""
-    select
-        count(1) as item_count,
-        item.id as ItemID,
-        item.name as Name
-    from sales
-        join
-            item
-            on item.id=sales.item_id
-    group by itemID, Name
-    order by item_count DESC limit 10
+       select
+            count(1) as item_count,
+            item.id as ItemID,
+            item.name as Name
+        from sales
+            join
+                item
+                on item.id=sales.item_id
+        group by itemID, Name
+        order by item_count DESC limit 10
         """
     return await database.fetch_all(query)
-
-
-"""
-@app.post("/notes/", response_model=Note)
-async def create_note(note: NoteIn):
-    query = notes.insert().values(text=note.text, completed=note.completed)
-    last_record_id = await database.execute(query)
-    return {**note.dict(), "id": last_record_id}
-"""
 
 
 # Добавление в таблицу магазинов
@@ -225,7 +202,7 @@ async def create_item(note: ItemIn):
 # Добавление в таблицу продаж
 @app.post("/sales/", response_model=Sales)
 async def create_sale(note: SalesIn):
-    query = sales.insert().values(sale_time=datetime.datetime.now(), item_id=note.item_id, store_id=note.store_id)
+    query = sales.insert().values(sale_time=note.sale_time, item_id=note.item_id, store_id=note.store_id)
     last_record_id = await database.execute(query)
     return {**note.dict(), "id": last_record_id}
 
