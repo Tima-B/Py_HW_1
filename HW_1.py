@@ -207,4 +207,4 @@ async def create_sale(note: SalesIn):
     last_record_id = await database.execute(query)
     return {**note.dict(), "id": last_record_id}
 
-# запуск: uvicorn <filename>:application
+# запуск: py -m uvicorn HW_1:app

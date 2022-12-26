@@ -1,3 +1,8 @@
+Запуск программы из терминала PyCharm:
+py -m uvicorn HW_1:app
+Адрес: http://127.0.0.1:8000
+
+
 Post:
 Создение нового магазина
 /store/
@@ -12,6 +17,7 @@ price: float
 /sales/
 item_id: int
 store_id: int
+
 
 Get:
 Список магазиов
